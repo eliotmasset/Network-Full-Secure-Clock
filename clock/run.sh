@@ -1,1 +1,0 @@
-cargo build && clear && ./target/debug/clock
