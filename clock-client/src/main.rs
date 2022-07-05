@@ -20,10 +20,7 @@ fn main() {
                     break;
                 }
             }
-            stream.flush().unwrap();
             stream.write(b"end").unwrap();
-            stream.flush().unwrap();
-            stream.shutdown(Shutdown::Both).unwrap();
 
         },
         Err(e) => {
@@ -37,7 +34,7 @@ fn menu(mut stream: &TcpStream) -> i32 {
     let stdin = 0;
     let termios = Termios::from_fd(stdin).unwrap();
     let mut answer_termios = termios.clone();
-    answer_termios.c_lflag &= !(ICANON | ECHO); // no echo and canonical mode
+    answer_termios.c_lflag &= !(ICANON); // no echo and canonical mode
     tcsetattr(stdin, TCSANOW, &mut answer_termios).unwrap();
     let stdout = io::stdout();
     let mut reader = io::stdin();
