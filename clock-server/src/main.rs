@@ -2,6 +2,17 @@ use std::thread;
 use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Read, Write};
 use std::str::from_utf8;
+use chrono;
+use chrono::prelude::*;
+
+fn getTime() -> String {
+    let now = Utc::now();
+    let ts: i64 = now.timestamp();
+    let nt = NaiveDateTime::from_timestamp(ts, 0);
+    let dt: DateTime<Utc> = DateTime::from_utc(nt, Utc);
+    let datetime = dt.format("%Y-%m-%d %H:%M:%S").to_string();
+    return datetime;
+}
 
 fn handle_client(mut stream: TcpStream) {
     let mut data = [0; 1024]; // using 50 byte buffer
@@ -10,7 +21,7 @@ fn handle_client(mut stream: TcpStream) {
             let resp = from_utf8(&data).unwrap().trim_matches(char::from(0));
             if resp=="getTime" {
                 data = [0; 1024];
-                stream.write(b"10:42").unwrap();
+                stream.write(getTime().as_bytes()).unwrap();
                 stream.flush().unwrap();
             } else if resp=="end" {
                 data = [0; 1024];
