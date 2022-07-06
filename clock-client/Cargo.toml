@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 termios = "0.3"
+rustyline = "9.1.0"

@@ -1,11 +1,17 @@
 
 //Dépendencies 
 extern crate termios;
+extern crate rustyline;
 use std::io;
+use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 use std::net::{TcpStream, Shutdown};
 use std::io::{Read, Write};
 use std::str::from_utf8;
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
 
 // Main program function
 fn main() {
@@ -14,6 +20,7 @@ fn main() {
             println!("Successfully connected to server");
             let mut timestamp_pattern = "%Y-%m-%d %H:%M:%S".to_string();
             let mut a =1;
+            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 
             loop {
                 let ret = menu(&stream, &mut timestamp_pattern);
@@ -45,7 +52,7 @@ fn menu(mut stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     let mut buffer = [0;1];
 
     let len : i16 = timestamp_pattern.len().try_into().unwrap();
-    let nb_spaces : i16 = 19-len;
+    let nb_spaces : i16 = 23-len;
     let mut timestamp_pattern_spaces = timestamp_pattern.clone();
     if nb_spaces > 0 {
         for i in 0..nb_spaces {
@@ -54,7 +61,7 @@ fn menu(mut stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     }
 
     println!("            ---    The Network Full Secure Clock    ---");
-    println!("            | Current Format : {}    |",timestamp_pattern_spaces);
+    println!("            | Current Format : {}|",timestamp_pattern_spaces);
     println!("            | g : Get current time                    |");
     println!("            | s : Set the pattern timestamp           |");
     println!("            | t : Timestamp format                    |");
@@ -79,7 +86,10 @@ fn ask(c : char, mut stream: &TcpStream, mut timestamp_pattern:  &mut String) ->
         's'=>setPattern(&stream, &mut timestamp_pattern),
         'g'=>getTime(&stream, &timestamp_pattern),
         't'=>showTimeStampTuto(),
-        _=>println!("Invalid response!"),
+        _=>{
+            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+            println!("Invalid response!");
+        },
     }
 
     println!();
@@ -96,7 +106,8 @@ fn getTime(mut stream: &TcpStream, timestamp_pattern: &String) {
         Ok(_) => {
             let text = from_utf8(&data).unwrap().trim_matches(char::from(0));
             if text != "invalid reponse" {
-                println!("          Current Time : [ {} ]", text);
+                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                println!("Current Time : [ {} ]", text);
             }   else {
                 println!("          Error : No current time available");
             }
@@ -110,15 +121,46 @@ fn getTime(mut stream: &TcpStream, timestamp_pattern: &String) {
 }
 
 fn setPattern(mut stream: &TcpStream, mut timestamp_pattern: &mut String) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("Please, enter the new pattern :");
 
-    let mut new_pattern = String::new();
+    let mut rl = Editor::<()>::new();
+    if rl.load_history("temp.txt").is_err() {
+        println!("No previous temp file.");
+    }
+    let readline = rl.readline(">> ");
+    match readline {
+        Ok(line) => {
+            rl.add_history_entry(line.as_str());
+        },
+        Err(ReadlineError::Interrupted) => {
+            println!("CTRL-C");
+        },
+        Err(ReadlineError::Eof) => {
+            println!("CTRL-D");
+        },
+        Err(err) => {
+            println!("Error: {:?}", err);
+        }
+    }
+    rl.save_history("temp.txt").unwrap();
 
-    io::stdin()
-        .read_line(&mut new_pattern)
-        .expect("Failed to read line");
+    let file = File::open("temp.txt").unwrap();
+    let reader = BufReader::new(file);
 
-    *timestamp_pattern = new_pattern.trim_matches(char::from(0)).trim_matches('\n').trim_matches(char::from(10)).to_string();
+    let mut resp = String::from("");
+    let mut i=0;
+    for (index, line) in reader.lines().enumerate() {
+        if i==1 {
+            resp = line.unwrap();
+            break;
+        }
+        i=i+1;
+    }
+    fs::remove_file("temp.txt").unwrap();
+    *timestamp_pattern = resp.trim_matches(char::from(0)).trim_matches('\n').trim_matches(char::from(10)).to_string();
+    
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 }
 
 fn showTimeStampTuto() {
@@ -131,6 +173,7 @@ fn showTimeStampTuto() {
     let mut reader = io::stdin();
     let mut buffer = [0;1];
 
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("---------------------------------   TimeStamp  Format   ---------------------------------");
     println!("| %Y (2001) The full proleptic Gregorian year, zero-padded to 4 digits.                 |");
     println!("| %C (20) The proleptic Gregorian year divided by 100, zero-padded to 2 digits.         |");
@@ -186,12 +229,12 @@ fn showTimeStampTuto() {
     println!("| %t  Literal tab (\\t).                                                                 |");
     println!("| %n  Literal newline (\\n).                                                             |");
     println!("| %%  Literal percent sign.                                                             |");
-    println!("| Press any keys to exit                                                                |");
     println!("-----------------------------------------------------------------------------------------");
+    println!(" Press any keys to exit");
 
     stdout.lock().flush().unwrap();
     reader.read_exact(&mut buffer).unwrap();
     let response = buffer[0] as char;
     tcsetattr(stdin, TCSANOW, & termios).unwrap();
-    println!();
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 }
