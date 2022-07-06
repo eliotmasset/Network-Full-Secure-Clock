@@ -7,20 +7,24 @@ use std::net::{TcpStream, Shutdown};
 use std::io::{Read, Write};
 use std::str::from_utf8;
 
-
 // Main program function
 fn main() {
     match TcpStream::connect("localhost:8080") {
         Ok(mut stream) => {
             println!("Successfully connected to server");
+            let mut timestamp_pattern = "%Y-%m-%d %H:%M:%S".to_string();
+            let mut a =1;
 
             loop {
-                let ret = menu(&stream);
+                let ret = menu(&stream, &mut timestamp_pattern);
                 if ret == 0 {
                     break;
                 }
             }
+            stream.flush().unwrap();
             stream.write(b"end").unwrap();
+            stream.flush().unwrap();
+            stream.shutdown(Shutdown::Both).unwrap();
 
         },
         Err(e) => {
@@ -30,7 +34,7 @@ fn main() {
     println!("GoodBy!");
 }
 
-fn menu(mut stream: &TcpStream) -> i32 {
+fn menu(mut stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     let stdin = 0;
     let termios = Termios::from_fd(stdin).unwrap();
     let mut answer_termios = termios.clone();
@@ -40,8 +44,17 @@ fn menu(mut stream: &TcpStream) -> i32 {
     let mut reader = io::stdin();
     let mut buffer = [0;1];
 
+    let len : i16 = timestamp_pattern.len().try_into().unwrap();
+    let nb_spaces : i16 = 19-len;
+    let mut timestamp_pattern_spaces = timestamp_pattern.clone();
+    if nb_spaces > 0 {
+        for i in 0..nb_spaces {
+            timestamp_pattern_spaces.push(' ');
+        }
+    }
+
     println!("            ---    The Network Full Secure Clock    ---");
-    println!("            | Current Format : YYYY-MM-DD HH:mm:ss    |");
+    println!("            | Current Format : {}    |",timestamp_pattern_spaces);
     println!("            | g : Get current time                    |");
     println!("            | s : Set the pattern timestamp           |");
     println!("            | t : Timestamp format                    |");
@@ -53,17 +66,18 @@ fn menu(mut stream: &TcpStream) -> i32 {
     let response = buffer[0] as char;
     tcsetattr(stdin, TCSANOW, & termios).unwrap();
     println!();
-    return ask(response, &stream);
+    return ask(response, &stream, &mut timestamp_pattern);
 }
 
-fn ask(c : char, mut stream: &TcpStream) -> i32 {
+fn ask(c : char, mut stream: &TcpStream, mut timestamp_pattern:  &mut String) -> i32 {
     if c=='e' {
         return 0;
     }
 
     match c {
         'e'=>return 0,
-        'g'=>getTime(&stream),
+        's'=>setPattern(&stream, &mut timestamp_pattern),
+        'g'=>getTime(&stream, &timestamp_pattern),
         't'=>showTimeStampTuto(),
         _=>println!("Invalid response!"),
     }
@@ -72,16 +86,20 @@ fn ask(c : char, mut stream: &TcpStream) -> i32 {
     return 1;
 }
 
-fn getTime(mut stream: &TcpStream) {
-    let msg = b"getTime";
-
-    stream.write(msg).unwrap();
+fn getTime(mut stream: &TcpStream, timestamp_pattern: &String) {
+    let msg = format!("{}{}","getTime:",timestamp_pattern);
+    let msg_bytes = msg.as_bytes();
+    stream.write(msg_bytes).unwrap();
 
     let mut data = [0; 1024]; // using 6 byte buffer
     match stream.read(&mut data) {
         Ok(_) => {
-            let text = from_utf8(&data).unwrap();
-            println!("          Current Time : [ {} ]", text);
+            let text = from_utf8(&data).unwrap().trim_matches(char::from(0));
+            if text != "invalid reponse" {
+                println!("          Current Time : [ {} ]", text);
+            }   else {
+                println!("          Error : No current time available");
+            }
             data = [0; 1024];
             stream.flush().unwrap();
         },
@@ -89,6 +107,18 @@ fn getTime(mut stream: &TcpStream) {
             println!("Failed to receive data: {}", e);
         }
     }
+}
+
+fn setPattern(mut stream: &TcpStream, mut timestamp_pattern: &mut String) {
+    println!("Please, enter the new pattern :");
+
+    let mut new_pattern = String::new();
+
+    io::stdin()
+        .read_line(&mut new_pattern)
+        .expect("Failed to read line");
+
+    *timestamp_pattern = new_pattern.trim_matches(char::from(0)).trim_matches('\n').trim_matches(char::from(10)).to_string();
 }
 
 fn showTimeStampTuto() {
@@ -156,6 +186,7 @@ fn showTimeStampTuto() {
     println!("| %t  Literal tab (\\t).                                                                 |");
     println!("| %n  Literal newline (\\n).                                                             |");
     println!("| %%  Literal percent sign.                                                             |");
+    println!("| Press any keys to exit                                                                |");
     println!("-----------------------------------------------------------------------------------------");
 
     stdout.lock().flush().unwrap();
