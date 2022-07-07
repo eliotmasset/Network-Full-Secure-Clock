@@ -2,6 +2,7 @@
 //Dépendencies 
 extern crate termios;
 extern crate rustyline;
+extern crate crossterm;
 use std::io;
 use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 use std::net::{TcpStream, Shutdown};
@@ -10,6 +11,8 @@ use std::str::from_utf8;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use ansi_term::Colour;
+use crossterm::{cursor};
+use std::any::type_name;
 
 // Main program function
 fn main() {
@@ -36,7 +39,6 @@ fn main() {
         }
     }  
     let style_yellow_bold = Colour::Yellow.bold();
-    println!("");
     println!("{}",style_yellow_bold.paint("GoodBye!"));
     println!("");
 }
@@ -64,6 +66,12 @@ fn menu(stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     let style_red_bold = Colour::Red.bold();
     let style_green_bold = Colour::Green.bold();
     let style_yellow_bold = Colour::Yellow.bold();
+
+    let (_,y) =  cursor::position().ok().unwrap();
+    if y==0 {
+        println!("");
+        println!("");
+    }
 
     println!("{}{}{}", 
             style_red_bold.paint("            ---    "),
@@ -96,7 +104,8 @@ fn menu(stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     reader.read_exact(&mut buffer).unwrap();
     let response = buffer[0] as char;
     tcsetattr(stdin, TCSANOW, & termios).unwrap();
-    println!();
+    println!("\r ");
+    
     return ask(response, &stream, &mut timestamp_pattern);
 }
 
