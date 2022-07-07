@@ -3,9 +3,6 @@
 extern crate termios;
 extern crate rustyline;
 use std::io;
-use std::fs;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 use std::net::{TcpStream, Shutdown};
 use std::io::{Read, Write};
@@ -20,7 +17,6 @@ fn main() {
         Ok(mut stream) => {
             println!("Successfully connected to server");
             let mut timestamp_pattern = "%Y-%m-%d %H:%M:%S".to_string();
-            let mut a =1;
             print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 
             loop {
@@ -41,11 +37,11 @@ fn main() {
     }  
     let style_yellow_bold = Colour::Yellow.bold();
     println!("");
-    println!("{}",style_yellow_bold.paint("GoodBy!"));
+    println!("{}",style_yellow_bold.paint("GoodBye!"));
     println!("");
 }
 
-fn menu(mut stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
+fn menu(stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     let stdin = 0;
     let termios = Termios::from_fd(stdin).unwrap();
     let mut answer_termios = termios.clone();
@@ -59,7 +55,7 @@ fn menu(mut stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     let nb_spaces : i16 = 23-len;
     let mut timestamp_pattern_spaces = timestamp_pattern.clone();
     if nb_spaces > 0 {
-        for i in 0..nb_spaces {
+        for _ in  0..nb_spaces {
             timestamp_pattern_spaces.push(' ');
         }
     }
@@ -104,16 +100,16 @@ fn menu(mut stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     return ask(response, &stream, &mut timestamp_pattern);
 }
 
-fn ask(c : char, mut stream: &TcpStream, mut timestamp_pattern:  &mut String) -> i32 {
+fn ask(c : char, stream: &TcpStream, mut timestamp_pattern:  &mut String) -> i32 {
     if c=='e' {
         return 0;
     }
 
     match c {
         'e'=>return 0,
-        's'=>setPattern(&stream, &mut timestamp_pattern),
-        'g'=>getTime(&stream, &timestamp_pattern),
-        't'=>showTimeStampTuto(),
+        's'=>set_pattern(&mut timestamp_pattern),
+        'g'=>get_time(&stream, &timestamp_pattern),
+        't'=>show_time_stamp_tuto(),
         _=>{
             print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
             println!("Invalid response!");
@@ -124,7 +120,7 @@ fn ask(c : char, mut stream: &TcpStream, mut timestamp_pattern:  &mut String) ->
     return 1;
 }
 
-fn getTime(mut stream: &TcpStream, timestamp_pattern: &String) {
+fn get_time(mut stream: &TcpStream, timestamp_pattern: &String) {
     let msg = format!("{}{}","getTime:",timestamp_pattern);
     let msg_bytes = msg.as_bytes();
     stream.write(msg_bytes).unwrap();
@@ -144,7 +140,6 @@ fn getTime(mut stream: &TcpStream, timestamp_pattern: &String) {
             }   else {
                 println!("          Error : No current time available");
             }
-            data = [0; 1024];
             stream.flush().unwrap();
         },
         Err(e) => {
@@ -153,17 +148,17 @@ fn getTime(mut stream: &TcpStream, timestamp_pattern: &String) {
     }
 }
 
-fn setPattern(mut stream: &TcpStream, mut timestamp_pattern: &mut String) {
+fn set_pattern(timestamp_pattern: &mut String) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     let style_green_bold = Colour::Green.bold();
     println!("{}",style_green_bold.paint("Please, enter the new pattern :"));
 
     let mut rl = Editor::<()>::new();
-    rl.load_history("temp.txt");
     let readline = rl.readline(">> ");
+    let mut resp = String::from("");
     match readline {
         Ok(line) => {
-            rl.add_history_entry(line.as_str());
+            resp = line;
         },
         Err(ReadlineError::Interrupted) => {
             println!("CTRL-C");
@@ -175,27 +170,12 @@ fn setPattern(mut stream: &TcpStream, mut timestamp_pattern: &mut String) {
             println!("Error: {:?}", err);
         }
     }
-    rl.save_history("temp.txt").unwrap();
-
-    let file = File::open("temp.txt").unwrap();
-    let reader = BufReader::new(file);
-
-    let mut resp = String::from("");
-    let mut i=0;
-    for (index, line) in reader.lines().enumerate() {
-        if i==1 {
-            resp = line.unwrap();
-            break;
-        }
-        i=i+1;
-    }
-    fs::remove_file("temp.txt").unwrap();
     *timestamp_pattern = format!("{}",resp.trim_matches(char::from(0)).trim_matches('\n').trim_matches(char::from(10)).to_string());
     
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 }
 
-fn showTimeStampTuto() {
+fn show_time_stamp_tuto() {
     let style_red_bold = Colour::Red.bold();
     let style_yellow_bold = Colour::Yellow.bold();
     let style_blue_bold = Colour::Blue.bold();
@@ -434,7 +414,6 @@ fn showTimeStampTuto() {
 
     stdout.lock().flush().unwrap();
     reader.read_exact(&mut buffer).unwrap();
-    let response = buffer[0] as char;
     tcsetattr(stdin, TCSANOW, & termios).unwrap();
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 }

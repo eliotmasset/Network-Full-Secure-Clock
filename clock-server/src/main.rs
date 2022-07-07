@@ -6,7 +6,7 @@ use chrono;
 use chrono::prelude::*;
 use regex::Regex;
 
-fn getTime(pattern: &str) -> String {
+fn get_time(pattern: &str) -> String {
     let now = Utc::now();
     let ts: i64 = now.timestamp();
     let nt = NaiveDateTime::from_timestamp(ts, 0);
@@ -26,7 +26,7 @@ fn handle_client(mut stream: TcpStream) {
             if re.is_match(resp) {
                 let results = re.captures(resp).unwrap();
                 let result = results.get(1).map_or("", |m| m.as_str());
-                stream.write(getTime(result).as_bytes()).unwrap();
+                stream.write(get_time(result).as_bytes()).unwrap();
                 stream.flush().unwrap();
             } else if resp=="end" {
                 stream.flush().unwrap();
