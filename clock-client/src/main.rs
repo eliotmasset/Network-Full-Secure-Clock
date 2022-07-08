@@ -12,7 +12,6 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use ansi_term::Colour;
 use crossterm::{cursor};
-use std::any::type_name;
 
 // Main program function
 fn main() {
@@ -70,6 +69,8 @@ fn menu(stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
     let (_,y) =  cursor::position().ok().unwrap();
     if y==0 {
         println!("");
+        println!("");
+    }else if y==1 {
         println!("");
     }
 
