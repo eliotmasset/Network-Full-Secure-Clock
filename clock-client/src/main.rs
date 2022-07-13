@@ -163,12 +163,35 @@ fn set_pattern(timestamp_pattern: &mut String) {
     let style_green_bold = Colour::Green.bold();
     println!("{}",style_green_bold.paint("Please, enter the new pattern :"));
 
+    let accept_chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890+= |'\"²#%$€*!?.;,:/_-&éèëêîïüûàäâôöç@()[]{}ñ~°<>";
+
     let mut rl = Editor::<()>::new();
     let readline = rl.readline(">> ");
     let mut resp = String::from("");
+    let style_red_bold = Colour::Red.bold();
+    let style_yellow_bold = Colour::Yellow.bold();
     match readline {
         Ok(line) => {
-            resp = line;
+            for resp_char in line.chars() {
+                let mut is_in = false;
+                for accept_char in accept_chars.chars() {
+                    if accept_char==resp_char {
+                        is_in = true;
+                    }
+                }
+                if !is_in {
+                    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                    println!("{}{}", style_red_bold.paint("UNOTHORIZED char : "),style_yellow_bold.paint(String::from(resp_char)));
+                    return;
+                }
+            }
+            let len : i16 = line.len().try_into().unwrap();
+            if len > 100 {
+                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                println!("{}", style_red_bold.paint("PATTERN TO LONG, sorry, the pattern must be less than 100 chars"));
+            } else {
+                resp = line;
+            }
         },
         Err(ReadlineError::Interrupted) => {
             println!("CTRL-C");
@@ -180,9 +203,11 @@ fn set_pattern(timestamp_pattern: &mut String) {
             println!("Error: {:?}", err);
         }
     }
-    *timestamp_pattern = format!("{}",resp.trim_matches(char::from(0)).trim_matches('\n').trim_matches(char::from(10)).to_string());
-    
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    if resp != String::from("") {
+        *timestamp_pattern = format!("{}",resp.trim_matches(char::from(0)).trim_matches('\n').trim_matches(char::from(10)).to_string());
+        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    }
+    //TODO : accept chars
 }
 
 fn show_time_stamp_tuto() {

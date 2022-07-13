@@ -3,16 +3,15 @@ use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Read, Write};
 use std::str::from_utf8;
 use chrono;
+extern crate time;
 use chrono::prelude::*;
 use regex::Regex;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 fn get_time(pattern: &str) -> String {
-    let now = Utc::now();
-    let ts: i64 = now.timestamp();
-    let nt = NaiveDateTime::from_timestamp(ts, 0);
-    let dt: DateTime<Utc> = DateTime::from_utc(nt, Utc);
-    let datetime = dt.format(pattern).to_string();
-    return datetime;
+    let ts: i64 = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).ok().unwrap().as_secs().try_into().unwrap();
+    let nt = NaiveDateTime::from_timestamp(ts, 2);
+    return Local.from_utc_datetime(&nt).format(pattern).to_string();
 }
 
 fn handle_client(mut stream: TcpStream) {
