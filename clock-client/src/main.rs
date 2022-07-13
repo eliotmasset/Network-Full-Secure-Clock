@@ -148,7 +148,8 @@ fn get_time(mut stream: &TcpStream, timestamp_pattern: &String) {
                         style_green_bold.paint(text),
                         style_red_bold.paint(" ]"));
             }   else {
-                println!("          Error : No current time available");
+                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                println!("{}",style_red_bold.paint("          Error : No current time available"));
             }
             stream.flush().unwrap();
         },
