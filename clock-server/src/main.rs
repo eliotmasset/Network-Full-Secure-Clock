@@ -15,13 +15,12 @@ fn get_time(pattern: &str) -> String {
 }
 
 fn handle_client(mut stream: TcpStream) {
-    let mut datas = [0; 1024]; // using 50 byte buffer
-    'reader: while match stream.read(&mut datas) {
+    let mut datas = [0; 1024];
+    'reader: while match stream.read_exact(&mut datas) { // Wait exactly 1024 bytes
         Ok(_) => {
             let data = datas;
             datas = [0; 1024];
             let resp = from_utf8(&data).unwrap().trim_matches(char::from(0));
-
             let accept_chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890+= |'\"²#%$€*!?.;,:/_-&éèëêîïüûàäâôöç@()[]{}ñ~°<>";
             let mut error = false;
             'chars : for resp_char in resp.chars() {

@@ -12,6 +12,7 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use ansi_term::Colour;
 use crossterm::{cursor};
+use std::time::Duration;
 
 // Main program function
 fn main() {
@@ -28,7 +29,17 @@ fn main() {
                 }
             }
             stream.flush().unwrap();
-            stream.write(b"end").unwrap();
+            
+            let msg = "end";
+            let msg_bytes = msg.as_bytes();
+            let mut send_bytes : [u8;1024] = [0; 1024];
+            let mut i = 0;
+            for byte in msg_bytes {
+                send_bytes[i] = *byte;
+                i=i+1;
+            }
+            stream.write(&send_bytes).unwrap();
+
             stream.flush().unwrap();
             stream.shutdown(Shutdown::Both).unwrap();
 
@@ -133,8 +144,15 @@ fn ask(c : char, stream: &TcpStream, mut timestamp_pattern:  &mut String) -> i32
 fn get_time(mut stream: &TcpStream, timestamp_pattern: &String) {
     let msg = format!("{}{}","getTime:",timestamp_pattern);
     let msg_bytes = msg.as_bytes();
-    stream.write(msg_bytes).unwrap();
+    let mut send_bytes : [u8;1024] = [0; 1024];
+    let mut i = 0;
+    for byte in msg_bytes {
+        send_bytes[i] = *byte;
+        i=i+1;
+    }
+    stream.write(&send_bytes).unwrap(); // Send exatly 1024 bytes
 
+    stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap_err();
     let mut data = [0; 1024]; // using 6 byte buffer
     match stream.read(&mut data) {
         Ok(_) => {
@@ -154,7 +172,9 @@ fn get_time(mut stream: &TcpStream, timestamp_pattern: &String) {
             stream.flush().unwrap();
         },
         Err(e) => {
-            println!("Failed to receive data: {}", e);
+            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+            println!("          Failed to receive data: {}",e);
+            stream.flush().unwrap();
         }
     }
 }
