@@ -13,9 +13,14 @@ use rustyline::Editor;
 use ansi_term::Colour;
 use crossterm::{cursor};
 use std::time::Duration;
+use caps::CapSet;
 
 // Main program function
 fn main() {
+    caps::clear(None, CapSet::Effective).unwrap();                                        // ||
+    caps::clear(None, CapSet::Inheritable).unwrap();                                      // ||
+    caps::clear(None, CapSet::Permitted).unwrap();                                        // \/ Clear capabilities
+    
     match TcpStream::connect("localhost:8080") {
         Ok(mut stream) => {
             println!("Successfully connected to server");
@@ -107,6 +112,10 @@ fn menu(stream: &TcpStream, mut timestamp_pattern: &mut String) -> i32 {
             style_red_bold.paint(" : Timestamp format                    |"));
     println!("{}{}{}",
             style_red_bold.paint("            | "),
+            style_yellow_bold.paint("d"),
+            style_red_bold.paint(" : Set a new date                      |"));
+    println!("{}{}{}",
+            style_red_bold.paint("            | "),
             style_yellow_bold.paint("e"),
             style_red_bold.paint(" : Exit                                |"));
     println!("{}",
@@ -130,6 +139,7 @@ fn ask(c : char, stream: &TcpStream, mut timestamp_pattern:  &mut String) -> i32
         'e'=>return 0,
         's'=>set_pattern(&mut timestamp_pattern),
         'g'=>get_time(&stream, &timestamp_pattern),
+        'd'=>set_time(&stream),
         't'=>show_time_stamp_tuto(),
         _=>{
             print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -139,6 +149,82 @@ fn ask(c : char, stream: &TcpStream, mut timestamp_pattern:  &mut String) -> i32
 
     println!();
     return 1;
+}
+fn set_time(mut stream: &TcpStream) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    let style_green_bold = Colour::Green.bold();
+    println!("{}",style_green_bold.paint("Please, enter the new date :"));
+
+    let accept_chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890%:- ";
+
+    let mut rl = Editor::<()>::new();
+    let readline = rl.readline(">> ");
+    let style_red_bold = Colour::Red.bold();
+    let style_yellow_bold = Colour::Yellow.bold();
+    match readline {
+        Ok(line) => {
+            for resp_char in line.chars() {
+                let mut is_in = false;
+                for accept_char in accept_chars.chars() {
+                    if accept_char==resp_char {
+                        is_in = true;
+                    }
+                }
+                if !is_in {
+                    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                    println!("{}{}", style_red_bold.paint("UNOTHORIZED char : "),style_yellow_bold.paint(String::from(resp_char)));
+                    return;
+                }
+            }
+            let len : i16 = line.len().try_into().unwrap();
+            if len > 100 {
+                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                println!("{}", style_red_bold.paint("DATE TOO LONG, sorry, the date must be less than 100 chars"));
+            } else {
+                let msg = format!("{}{}","setTime:",line);
+                let msg_bytes = msg.as_bytes();
+                let mut send_bytes : [u8;1024] = [0; 1024];
+                let mut i = 0;
+                for byte in msg_bytes {
+                    send_bytes[i] = *byte;
+                    i=i+1;
+                }
+                stream.write(&send_bytes).unwrap(); // Send exatly 1024 bytes
+
+                stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+                let mut data = [0; 1024]; // using 6 byte buffer
+                match stream.read(&mut data) {
+                    Ok(_) => {
+                        let style_red_bold = Colour::Red.bold();
+                        let style_green_bold = Colour::Green.bold();
+                        let text = from_utf8(&data).unwrap().trim_matches(char::from(0));
+                        if text == "true" {
+                            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                            println!("{}", style_green_bold.paint("Time set SuccesFull!"));
+                        } else {
+                            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                            println!("{}",style_red_bold.paint("Time set Error!"));
+                        }
+                        stream.flush().unwrap();
+                    },
+                    Err(e) => {
+                        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                        println!("          Failed to receive data: {}",e);
+                        stream.flush().unwrap();
+                    }
+                }
+            }
+        },
+        Err(ReadlineError::Interrupted) => {
+            println!("CTRL-C");
+        },
+        Err(ReadlineError::Eof) => {
+            println!("CTRL-D");
+        },
+        Err(err) => {
+            println!("Error: {:?}", err);
+        }
+    }
 }
 
 fn get_time(mut stream: &TcpStream, timestamp_pattern: &String) {
@@ -152,7 +238,7 @@ fn get_time(mut stream: &TcpStream, timestamp_pattern: &String) {
     }
     stream.write(&send_bytes).unwrap(); // Send exatly 1024 bytes
 
-    stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap_err();
+    stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     let mut data = [0; 1024]; // using 6 byte buffer
     match stream.read(&mut data) {
         Ok(_) => {
@@ -209,7 +295,7 @@ fn set_pattern(timestamp_pattern: &mut String) {
             let len : i16 = line.len().try_into().unwrap();
             if len > 100 {
                 print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-                println!("{}", style_red_bold.paint("PATTERN TO LONG, sorry, the pattern must be less than 100 chars"));
+                println!("{}", style_red_bold.paint("PATTERN TO0 LONG, sorry, the pattern must be less than 100 chars"));
             } else {
                 resp = line;
             }
@@ -228,7 +314,6 @@ fn set_pattern(timestamp_pattern: &mut String) {
         *timestamp_pattern = format!("{}",resp.trim_matches(char::from(0)).trim_matches('\n').trim_matches(char::from(10)).to_string());
         print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     }
-    //TODO : accept chars
 }
 
 fn show_time_stamp_tuto() {
