@@ -36,6 +36,8 @@ Ce projet est mi-professionnel et mi-personnel, je souhaitait me lancer dans le 
 
 - **Horloge avec pattern dynamique**
 
+- **Changer la date et le temps de la machine**
+
 ## 🛠️ Etapes d'installation
 
 1. Clone le repo
@@ -128,6 +130,8 @@ This project is professional and personnal, I wanted to get into Rust and this p
 - **Rust**
 
 - **Clock with dynamic pattern**
+
+- **Set date and time of the computer**
 
 ## 🛠️ Installation Steps
 
