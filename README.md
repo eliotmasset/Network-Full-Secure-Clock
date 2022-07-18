@@ -62,14 +62,14 @@ sudo apt-get update && sudo apt-get upgrade && install rustc cargo
 
 ```bash
 cd clock-server
-./run.sh
+sudo ./run.sh
 ```
 
 et avec un autre terminal
 
 ```bash
 cd clock-client
-./run.sh
+sudo ./run.sh
 ```
 
 🌟 Tout est bon!
@@ -157,14 +157,14 @@ sudo apt-get update && sudo apt-get upgrade && install rustc cargo
 
 ```bash
 cd clock-server
-./run.sh
+sudo ./run.sh
 ```
 
 and with the other terminal
 
 ```bash
 cd clock-client
-./run.sh
+sudo ./run.sh
 ```
 
 🌟 All rights !
