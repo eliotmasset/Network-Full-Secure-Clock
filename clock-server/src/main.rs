@@ -15,6 +15,10 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use ansi_term::Colour;
 use crossterm::{cursor};
+use sha256::digest_file;
+use std::path::Path;
+
+const sha256_settime : &str ="9bc642372795d5308c2d5ee1949ce56b9ab778c83365e8b398458043ef2f826b";
 
 
 fn set_time() {
@@ -50,13 +54,18 @@ fn set_time() {
             } else {
                 let style_red_bold = Colour::Red.bold();
                 let style_green_bold = Colour::Green.bold();
+                let input = Path::new("./target/debug/settime");
+                let res = digest_file(input).unwrap();
+                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                if res != sha256_settime {
+                    panic!("CRITICAL : WRONG SHA256 FOR APP SETTIME");
+                }
                 let output = Command::new("sudo")
                                         .arg("./target/debug/settime")
                                         .arg(line)
                                         .output()
                                         .expect("failed to execute process");
                 let mut response="true";
-                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                 if from_utf8(&output.stdout).unwrap().trim_matches('\n') != "true" {
                     response="false";
                 }
