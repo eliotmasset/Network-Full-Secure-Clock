@@ -9,7 +9,9 @@ use nix::time::{clock_gettime, clock_settime, ClockId};
 use nix::sys::time::TimeSpec;
 use nix::unistd::Pid;
 use std::env;
+use chrono::Local;
 use core::time::Duration;
+use chrono::{DateTime, TimeZone, NaiveDateTime, Utc};
 
 fn main() {
     if !Uid::effective().is_root() {
@@ -27,20 +29,26 @@ fn main() {
         }                                                                                 // ||
     }                                                                                     // ||
     if !caps::has_cap(None, CapSet::Permitted, Capability::CAP_SYS_TIME).ok().unwrap() {  // ||
-        println!("Sorry, you need to start this program in root/admin");                  // ||
-        return;                                                                           // ||
+        panic!("Sorry, you need to start this program in root/admin");                    // ||
     }                                                                                     // \/ Set need capabilities
 
-    let time : String =  format!("{:?}",env::args().nth_back(0));
+    let time_str : &str =  &env::args().nth_back(0).unwrap();
+    let datetime = DateTime::parse_from_rfc3339(time_str);
+    if !datetime.is_ok() {
+        println!("{:?}", datetime.err());
+        panic!("Wrong DateTime");
+    }
+    let timestamp = datetime.ok().unwrap().timestamp();
 
-    let id = ClockId::pid_cpu_clock_id(Pid::this()).ok().unwrap();
-    println!("{}", if true { "y" } else { "n" });
-    let r = clock_settime(id,TimeSpec::from_duration( Duration::from_millis(0)));
-    println!("{}", if r.is_ok() { "y" } else { "n" });
-    println!("{:?}", r.err().unwrap());
-    println!("{:?}", r.ok().unwrap());
-    println!("{}", if r.is_ok() { "y" } else { "n" });
-    print!("yes");
+    let id_realtime = ClockId::CLOCK_REALTIME;
+    
+    let duration = Duration::from_secs(timestamp.try_into().unwrap());
+
+    let r = clock_settime(id_realtime,TimeSpec::from_duration(duration));
+    if !r.is_ok() {
+        panic!("{:?}", r.err().unwrap());
+    }
+    println!("true");
 
     true;
 
