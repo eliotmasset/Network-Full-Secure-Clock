@@ -55,7 +55,7 @@ cd Network-Full-Secure-Clock
 3. Installe les dépendences
 
 ```bash
-sudo apt-get update && sudo apt-get upgrade && install rustc cargo
+sudo apt-get update && sudo apt-get upgrade && sudo apt-get install rustc cargo
 ```
 
 4. Démarre les deux applications
@@ -150,7 +150,7 @@ cd Network-Full-Secure-Clock
 3. Install dependencies
 
 ```bash
-sudo apt-get update && sudo apt-get upgrade && install rustc cargo
+sudo apt-get update && sudo apt-get upgrade && sudo apt-get install rustc cargo
 ```
 
 4. Start the two apps
