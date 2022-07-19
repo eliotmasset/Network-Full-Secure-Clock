@@ -17,8 +17,10 @@ use ansi_term::Colour;
 use crossterm::{cursor};
 use sha256::digest_file;
 use std::path::Path;
+use chrono::{DateTime, TimeZone, NaiveDateTime};
+use std::env::current_exe;
 
-const sha256_settime : &str ="9bc642372795d5308c2d5ee1949ce56b9ab778c83365e8b398458043ef2f826b";
+const SHA256_SETTIME : &str ="df1ecc5107271fb5f87d943ee2636da0f7ffdf5091e753475b04e5bae76e3cd9";
 
 
 fn set_time() {
@@ -57,15 +59,29 @@ fn set_time() {
                 let input = Path::new("./target/debug/settime");
                 let res = digest_file(input).unwrap();
                 print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-                if res != sha256_settime {
+                if res != SHA256_SETTIME {
                     panic!("CRITICAL : WRONG SHA256 FOR APP SETTIME");
                 }
+                let datetime = DateTime::parse_from_rfc3339(&line);
+                if !datetime.is_ok() {
+                    println!("Wrong datetime : {:?}", datetime.err());
+                    return;
+                }
+                let timestamp : i64 = datetime.ok().unwrap().timestamp().try_into().unwrap();
+                
+                let duration : String =  std::string::ToString::to_string(&timestamp);
+                
+                let mut current_dir = current_exe().ok().unwrap(); // Get the current path
+                current_dir.pop(); //Keep only parent dir from path
+
                 let output = Command::new("sudo")
-                                        .arg("./target/debug/settime")
-                                        .arg(line)
+                                        .current_dir(current_dir)
+                                        .arg("./settime")
+                                        .arg(&duration)
                                         .output()
                                         .expect("failed to execute process");
                 let mut response="true";
+                
                 if from_utf8(&output.stdout).unwrap().trim_matches('\n') != "true" {
                     response="false";
                 }
@@ -543,8 +559,6 @@ fn set_pattern_str(timestamp_pattern: &mut String) {
     let mut rl = Editor::<()>::new();
     let readline = rl.readline(">> ");
     let mut resp = String::from("");
-    let style_red_bold = Colour::Red.bold();
-    let style_yellow_bold = Colour::Yellow.bold();
     match readline {
         Ok(line) => {
             resp = line;
