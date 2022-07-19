@@ -20,7 +20,7 @@ use std::path::Path;
 use chrono::{DateTime, TimeZone, NaiveDateTime};
 use std::env::current_exe;
 
-const SHA256_SETTIME : &str ="df1ecc5107271fb5f87d943ee2636da0f7ffdf5091e753475b04e5bae76e3cd9";
+const SHA256_SETTIME : &str ="c440320597bad293642939493e07cef4c0f3ce577b35558ac426227f8f229c5c";
 
 
 fn set_time() {
